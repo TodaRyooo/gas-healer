@@ -22,6 +22,18 @@ describe('runCli', () => {
     expect(result.output).toContain('no-global-state');
   });
 
+  it('.tsファイルが1件も無く.jsファイルのみのディレクトリでも検出できる(回帰防止)', async () => {
+    const jsOnlyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gas-healer-js-only-'));
+    try {
+      fs.writeFileSync(path.join(jsOnlyDir, 'const.js'), 'let cachedData = [];\n');
+      const result = await runCli(['check', jsOnlyDir]);
+      expect(result.output).toContain('no-global-state');
+      expect(result.output).not.toContain('見つかりませんでした');
+    } finally {
+      fs.rmSync(jsOnlyDir, { recursive: true, force: true });
+    }
+  });
+
   it('--format=jsonでも.jsファイルの違反が構造化出力に含まれる', async () => {
     const result = await runCli(['check', './sample', '--format=json']);
     const parsed = JSON.parse(result.output);

@@ -53,8 +53,12 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     rulesConfig[`gas-healer/${rule.id}`] = toLinterSeverity(rule.severity);
   }
 
+  // ESLintのcwdは検査対象ディレクトリに合わせる必要がある。rootDir(コマンド実行場所)と
+  // targetDirが異なる場合、cwdをrootDirのままにするとESLint内部のignore解決がずれて
+  // 対象ファイルが誤って全て除外されてしまう。gas-healer-ignore.jsonの読み込みは
+  // プロジェクトルート(rootDir)基準のまま独立して行う。
   const eslint = new ESLint({
-    cwd: rootDir,
+    cwd: targetDir,
     overrideConfigFile: true,
     overrideConfig: [
       {
@@ -70,18 +74,25 @@ export async function runCli(argv: string[]): Promise<CliResult> {
 
   const patterns = TARGET_EXTENSIONS.map((ext) => path.join(targetDir, `**/*.${ext}`).split(path.sep).join('/'));
 
-  let results;
-  try {
-    results = await eslint.lintFiles(patterns);
-  } catch (error) {
-    if (isNoTargetFilesError(error)) {
-      const extList = TARGET_EXTENSIONS.map((ext) => `.${ext}`).join(' / ');
-      return {
-        exitCode: 0,
-        output: `対象ディレクトリ "${args.targetDir}" に検査可能な${extList}ファイルが見つかりませんでした。\n`,
-      };
+  // ESLintは配列で複数パターンを渡すと、いずれか1つでもマッチ0件のパターンがあった時点で
+  // 残りのパターンを試さずに例外を投げる。拡張子ごとに個別実行し、1件でも結果があれば採用する。
+  const results: ESLint.LintResult[] = [];
+  for (const pattern of patterns) {
+    try {
+      results.push(...(await eslint.lintFiles([pattern])));
+    } catch (error) {
+      if (!isNoTargetFilesError(error)) {
+        throw error;
+      }
     }
-    throw error;
+  }
+
+  if (results.length === 0) {
+    const extList = TARGET_EXTENSIONS.map((ext) => `.${ext}`).join(' / ');
+    return {
+      exitCode: 0,
+      output: `対象ディレクトリ "${args.targetDir}" に検査可能な${extList}ファイルが見つかりませんでした。\n`,
+    };
   }
 
   const fileViolations = new Map<string, Violation[]>();
