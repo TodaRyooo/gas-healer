@@ -1,0 +1,41 @@
+{
+  "name": "gas-healer",
+  "version": "0.1.0",
+  "description": "Google Apps Script (Clasp + TypeScript) 向けのグローバルスコープ汚染・アンチパターン検出CLI / ESLintプラグイン",
+  "license": "MIT",
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "gas-healer": "./dist/cli/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "bun test",
+    "check:sample": "bun cli/bin.ts check ./sample"
+  },
+  "keywords": [
+    "google-apps-script",
+    "gas",
+    "clasp",
+    "eslint",
+    "eslint-plugin",
+    "static-analysis"
+  ],
+  "dependencies": {
+    "@typescript-eslint/parser": "^8.18.1",
+    "@typescript-eslint/types": "^8.18.1",
+    "@typescript-eslint/visitor-keys": "^8.18.1"
+  },
+  "peerDependencies": {
+    "eslint": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.2"
+  }
+}
