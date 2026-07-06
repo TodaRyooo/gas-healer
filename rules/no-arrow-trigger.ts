@@ -1,42 +1,18 @@
 import type { TSESTree } from '@typescript-eslint/types';
 import { AST_NODE_TYPES } from '@typescript-eslint/types';
 import type { GasHealerRule, RuleContext, Violation } from '../types/rule';
-import { isInGlobalScope, traverse } from '../core/engine/traverse';
+import { isInGlobalScope } from '../core/engine/traverse';
 import { GAS_RESERVED_TRIGGER_NAMES } from './gas-constants';
-
-/**
- * `ScriptApp.newTrigger('functionName')` の 'functionName' を全て収集する。
- * トリガーは動的な文字列で指定されるため、ファイル全体を都度スキャンする必要がある。
- */
-function collectDynamicTriggerNames(program: TSESTree.Program): Set<string> {
-  const names = new Set<string>();
-
-  traverse(program, (node) => {
-    if (
-      node.type === AST_NODE_TYPES.CallExpression &&
-      node.callee.type === AST_NODE_TYPES.MemberExpression &&
-      node.callee.object.type === AST_NODE_TYPES.Identifier &&
-      node.callee.object.name === 'ScriptApp' &&
-      node.callee.property.type === AST_NODE_TYPES.Identifier &&
-      node.callee.property.name === 'newTrigger'
-    ) {
-      const firstArg = node.arguments[0];
-      if (firstArg && firstArg.type === AST_NODE_TYPES.Literal && typeof firstArg.value === 'string') {
-        names.add(firstArg.value);
-      }
-    }
-  });
-
-  return names;
-}
 
 export const noArrowTrigger: GasHealerRule = {
   id: 'no-arrow-trigger',
   name: 'no-arrow-trigger',
   description:
-    'GASのトリガー関数（onEdit等の予約関数名、およびScriptApp.newTriggerで指定される関数名）を' +
-    '非ホイストのconstアロー関数で定義するのを禁止する。GASのグローバルスコープではconstアロー関数は' +
-    '非ホイストのため、実行順序によっては「関数が未定義」エラーを起こす。',
+    'GASの予約済みシンプルトリガー関数名（onEdit, onOpen等）を非ホイストのconstアロー関数で' +
+    '定義するのを禁止する。GASはこれらの名前を持つグローバル関数を自動的に呼び出すため、' +
+    'バンドラー等によってグローバルスコープから見えなくなったり、非ホイストゆえの実行順序次第で' +
+    '「関数が未定義」エラーを起こす。' +
+    'ScriptApp.newTriggerで登録するカスタム名のハンドラは対象外（README Limitations参照）。',
   severity: 'ERROR',
 
   check(node: TSESTree.Node, context: RuleContext): Violation[] {
@@ -52,12 +28,7 @@ export const noArrowTrigger: GasHealerRule = {
     if (!isInGlobalScope(context.ancestors)) {
       return [];
     }
-
-    const name = node.id.name;
-    const isReserved = GAS_RESERVED_TRIGGER_NAMES.has(name);
-    const isDynamicTrigger = collectDynamicTriggerNames(context.program).has(name);
-
-    if (!isReserved && !isDynamicTrigger) {
+    if (!GAS_RESERVED_TRIGGER_NAMES.has(node.id.name)) {
       return [];
     }
 
@@ -65,7 +36,7 @@ export const noArrowTrigger: GasHealerRule = {
       {
         ruleId: this.id,
         severity: this.severity,
-        message: `トリガー関数 "${name}" がconstアロー関数で定義されています。非ホイストのため function宣言に変更してください。`,
+        message: `トリガー関数 "${node.id.name}" がconstアロー関数で定義されています。非ホイストのため function宣言に変更してください。`,
         line: node.loc.start.line,
         column: node.loc.start.column + 1,
       },

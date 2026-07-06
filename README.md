@@ -116,9 +116,14 @@ function main() {
 
 ### 2. `no-arrow-trigger`（`ERROR`）
 
-GASのトリガー関数（`onEdit`, `onOpen`等の予約関数名、および `ScriptApp.newTrigger` で指定される関数名）が
-非ホイストの `const` アロー関数で定義されている箇所を検出します。GASのグローバルスコープでは
-`const` アロー関数は非ホイストのため、実行順序によっては「関数が未定義」エラーを起こします。
+GASの予約済みシンプルトリガー関数名（`onEdit`, `onOpen`, `onInstall`, `onFormSubmit`,
+`onSelectionChange`, `onChange`, `doGet`, `doPost`）が非ホイストの `const` アロー関数で
+定義されている箇所を検出します。GASはこれらの名前を持つグローバル関数を自動的に呼び出すため、
+バンドラー等によってグローバルスコープから見えなくなったり、非ホイストゆえの実行順序次第で
+「関数が未定義」エラーを起こします。
+
+なお `ScriptApp.newTrigger('カスタム名')` で登録するインストーラブルトリガーのハンドラ名は
+対象外です（Limitations参照）。
 
 ```ts
 // NG
@@ -220,8 +225,10 @@ bun run build      # dist/ へのビルド（tsc）
   今回のMVPでは対象外としています。第2フェーズで対応予定です。
 - `no-global-service` は既知のGAS Serviceグローバル名（`SpreadsheetApp`, `DriveApp` など）の
   固定リストに基づいて判定するため、リストに無いServiceやラップされたヘルパー経由の呼び出しは検出できません。
-- `no-arrow-trigger` の動的トリガー名検出は、`ScriptApp.newTrigger('文字列リテラル')` のように
-  文字列リテラルで指定されている場合のみ対応しています。変数経由で渡される関数名は検出できません。
+- `no-arrow-trigger` は `onEdit` / `onOpen` 等8つの予約済みシンプルトリガー名のみを対象とし、
+  `ScriptApp.newTrigger('カスタム名')` で登録するインストーラブルトリガーのハンドラ名は意図的に対象外です。
+  GASのUI（トリガー管理画面）で手動登録されたトリガーはコード上に痕跡が残らず静的解析では原理的に検出不可能なため、
+  中途半端な検出で誤った安心感を与えるよりも、確実に判定できる予約済み名のみに絞っています。
 - `gas-healer-ignore.json` によるファイル単位の除外はCLI (`gas-healer check`) 実行時のみ有効です。
   ESLintプラグインとして直接利用する場合は、ESLint標準のdisableコメントを使用してください。
 
