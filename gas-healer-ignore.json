@@ -1,0 +1,5 @@
+{
+  "ignores": [
+    { "file": "sample/ignore-config-demo.ts", "ruleId": "no-global-state" }
+  ]
+}
