@@ -38,21 +38,21 @@ gas-healer check <対象ディレクトリ> --format=json
 $ npx gas-healer check ./sample
 
 sample/global-service-violation.ts
-  2:12  error  グローバルスコープで SpreadsheetApp のService APIを呼び出しています。関数内で取得してください。  (no-global-service)
+  2:12  ERROR  グローバルスコープで SpreadsheetApp のService APIを呼び出しています。関数内で取得してください。  (no-global-service)
 
 sample/global-state-violation.ts
-  2:5  warning  グローバルスコープでletによる可変状態を宣言しています。CacheService等への外出しを検討してください。  (no-global-state)
+  2:5  WARNING  グローバルスコープでletによる可変状態を宣言しています。CacheService等への外出しを検討してください。  (no-global-state)
 
 sample/loop-violation.ts
-  4:5  warning  ループ内でsetValue()を単発呼び出ししています。setValues()による一括書き込みを検討してください。  (no-setvalue-loop)
+  4:5  WARNING  ループ内でsetValue()を単発呼び出ししています。setValues()による一括書き込みを検討してください。  (no-setvalue-loop)
 
 sample/trigger-violation.ts
-  2:7  error  トリガー関数 "onEdit" がconstアロー関数で定義されています。非ホイストのため function宣言に変更してください。  (no-arrow-trigger)
+  2:7  ERROR  トリガー関数 "onEdit" がconstアロー関数で定義されています。非ホイストのため function宣言に変更してください。  (no-arrow-trigger)
 
 sample/js-support-demo.js
-  2:5  warning  グローバルスコープでletによる可変状態を宣言しています。CacheService等への外出しを検討してください。  (no-global-state)
+  2:5  WARNING  グローバルスコープでletによる可変状態を宣言しています。CacheService等への外出しを検討してください。  (no-global-state)
 
-5 problems (2 errors, 3 warnings, 0 info)
+5 problems (2 ERRORS, 3 WARNINGS, 0 INFO)
 ```
 
 対象ディレクトリに `.ts` / `.js` が1つも無い場合は、次のように案内を表示します（終了コード`0`）。
