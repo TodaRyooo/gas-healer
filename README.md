@@ -1,6 +1,6 @@
 # gas-healer
 
-Google Apps Script（GAS）を **Clasp + TypeScript** で開発しているエンジニア向けの、
+Google Apps Script（GAS）を **Clasp + TypeScript / JavaScript** で開発しているエンジニア向けの、
 グローバルスコープ汚染・アンチパターン検出CLIツール（兼ESLintプラグイン）です。
 
 GASはブラウザやNode.jsとは異なる独特な実行モデル（グローバルスコープの評価タイミング、
@@ -23,8 +23,10 @@ gas-healer check <対象ディレクトリ>
 gas-healer check <対象ディレクトリ> --format=json
 ```
 
-- 検査対象は `.ts` ファイルのみ（Clasp + TypeScript前提）
+- 検査対象は `.ts` / `.js` ファイル（Clasp + TypeScript、Clasp + JavaScriptどちらの環境にも対応）
+- 4ルールはいずれもAST構造のみを見るルール（型情報は使用しない）のため、`.js`でも`.ts`と同じ精度で検出します
 - `ERROR`（重大な違反）が1件でも見つかった場合、CLIは非ゼロの終了コードを返します（CI連携を想定）
+- 対象ディレクトリに `.ts` / `.js` ファイルが1つも無い場合は、エラーではなくその旨を知らせるメッセージを表示し、終了コード`0`を返します
 - `--format` オプションで出力形式を切り替え可能：
   - `stylish`（デフォルト）：ファイル:行番号、severity、ruleID、メッセージを含む人間可読な出力
   - `json`：CI連携を見据えた構造化出力
@@ -47,7 +49,17 @@ sample/loop-violation.ts
 sample/trigger-violation.ts
   2:7  error  トリガー関数 "onEdit" がconstアロー関数で定義されています。非ホイストのため function宣言に変更してください。  (no-arrow-trigger)
 
-4 problems (2 errors, 2 warnings, 0 info)
+sample/js-support-demo.js
+  2:5  warning  グローバルスコープでletによる可変状態を宣言しています。CacheService等への外出しを検討してください。  (no-global-state)
+
+5 problems (2 errors, 3 warnings, 0 info)
+```
+
+対象ディレクトリに `.ts` / `.js` が1つも無い場合は、次のように案内を表示します（終了コード`0`）。
+
+```
+$ npx gas-healer check ./empty-dir
+対象ディレクトリ "./empty-dir" に検査可能な.ts / .jsファイルが見つかりませんでした。
 ```
 
 ## 使い方（ESLintプラグイン）
@@ -61,7 +73,7 @@ import tsParser from '@typescript-eslint/parser';
 
 export default [
   {
-    files: ['**/*.ts'],
+    files: ['**/*.ts', '**/*.js'],
     languageOptions: { parser: tsParser },
     plugins: { 'gas-healer': gasHealer },
     rules: {
@@ -191,6 +203,7 @@ npm run check:sample
 - `inline-ignore-demo.ts` … インラインignoreコメントのデモ（検出されない）
 - `ignore-config-demo.ts` … `gas-healer-ignore.json`（リポジトリルート）によるファイル単位除外のデモ（検出されない）
 - `clean-example.ts` … 4ルールいずれの違反も無いOK例
+- `js-support-demo.js` … 型注釈の無いプレーンなJavaScript（Clasp+JS環境）でも検出されることのデモ
 
 ## 開発
 

@@ -12,8 +12,22 @@ import type { Severity, Violation } from '../types/rule';
 
 const severityByRuleId = new Map<string, Severity>(allRules.map((rule) => [rule.id, rule.severity]));
 
+/** 検査対象の拡張子。Clasp+TypeScript / Clasp+JavaScript どちらの環境にも対応する。 */
+const TARGET_EXTENSIONS = ['ts', 'js'];
+
 function toLinterSeverity(severity: Severity): Linter.StringSeverity {
   return severity === 'ERROR' ? 'error' : 'warn';
+}
+
+/**
+ * ESLintが「globにマッチするファイルが1件も無い（No files matching...)」
+ * または「マッチしたファイルが全てignore設定で除外された（All files matched...are ignored)」
+ * と判断した場合にthrowするエラーかどうかを判定する。
+ * どちらも内部エラークラスで公開APIからexportされていないため、メッセージ内容で判定する。
+ */
+function isNoTargetFilesError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return /No files matching .* were found\./.test(error.message) || /All files matched by .* are ignored\./.test(error.message);
 }
 
 export interface CliResult {
@@ -44,7 +58,7 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     overrideConfigFile: true,
     overrideConfig: [
       {
-        files: ['**/*.ts'],
+        files: TARGET_EXTENSIONS.map((ext) => `**/*.${ext}`),
         languageOptions: {
           parser: tsParser,
         },
@@ -54,7 +68,21 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     ],
   });
 
-  const results = await eslint.lintFiles([path.join(targetDir, '**/*.ts').split(path.sep).join('/')]);
+  const patterns = TARGET_EXTENSIONS.map((ext) => path.join(targetDir, `**/*.${ext}`).split(path.sep).join('/'));
+
+  let results;
+  try {
+    results = await eslint.lintFiles(patterns);
+  } catch (error) {
+    if (isNoTargetFilesError(error)) {
+      const extList = TARGET_EXTENSIONS.map((ext) => `.${ext}`).join(' / ');
+      return {
+        exitCode: 0,
+        output: `対象ディレクトリ "${args.targetDir}" に検査可能な${extList}ファイルが見つかりませんでした。\n`,
+      };
+    }
+    throw error;
+  }
 
   const fileViolations = new Map<string, Violation[]>();
 
